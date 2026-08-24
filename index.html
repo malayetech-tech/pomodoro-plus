@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro+</title>
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --surface: #ffffff;
+    --text: #1f1b16;
+    --text-dim: #6b6355;
+    --accent: #e2572b;
+    --accent-dim: #f2a58a;
+    --focus: #e2572b;
+    --short: #3f8f6f;
+    --long: #3a6ea5;
+    --border: rgba(31,27,22,0.1);
+    --shadow: 0 8px 24px rgba(31,27,22,0.08);
+    --danger: #c23b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17140f;
+      --surface: #221e18;
+      --text: #f2ede3;
+      --text-dim: #a89f8f;
+      --border: rgba(242,237,227,0.1);
+      --shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+    transition: background 0.4s ease;
+  }
+  .app {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  header {
+    text-align: center;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+  }
+  header p {
+    margin: 4px 0 0;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+  .modes {
+    display: flex;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 6px;
+    box-shadow: var(--shadow);
+  }
+  .modes button {
+    flex: 1;
+    padding: 10px 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .modes button.active {
+    background: var(--mode-color, var(--accent));
+    color: white;
+  }
+  .timer-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px 24px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    transition: box-shadow 0.3s ease;
+  }
+  .ring {
+    position: relative;
+    width: 240px;
+    height: 240px;
+  }
+  .ring svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+  .ring circle {
+    fill: none;
+    stroke-width: 10;
+  }
+  .ring .track { stroke: var(--border); }
+  .ring .progress {
+    stroke: var(--mode-color, var(--accent));
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+  }
+  .ring .time {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .ring .time .digits {
+    font-size: 2.6rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .ring .time .label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 4px;
+  }
+  .controls {
+    display: flex;
+    gap: 12px;
+  }
+  .controls button {
+    border: none;
+    border-radius: 12px;
+    padding: 12px 22px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.2s ease;
+  }
+  .controls button:active { transform: scale(0.96); }
+  .btn-primary {
+    background: var(--mode-color, var(--accent));
+    color: white;
+    min-width: 130px;
+  }
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border) !important;
+    color: var(--text);
+  }
+  .stats {
+    display: flex;
+    justify-content: space-around;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .stat { text-align: center; }
+  .stat .n { font-size: 1.4rem; font-weight: 700; }
+  .stat .l { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+  .tasks {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .tasks h2 {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+  .task-input {
+    display: flex;
+    gap: 8px;
+  }
+  .task-input input {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.9rem;
+  }
+  .task-input button {
+    border: none;
+    background: var(--accent);
+    color: white;
+    border-radius: 10px;
+    padding: 0 16px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .task-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .task-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: var(--bg);
+  }
+  .task-item.active-task { outline: 2px solid var(--mode-color, var(--accent)); }
+  .task-item input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .task-item .txt { flex: 1; font-size: 0.9rem; cursor: pointer; }
+  .task-item.done .txt { text-decoration: line-through; color: var(--text-dim); }
+  .task-item .pomo-count { font-size: 0.75rem; color: var(--text-dim); white-space: nowrap; }
+  .task-item .del {
+    border: none; background: transparent; color: var(--text-dim);
+    cursor: pointer; font-size: 1rem; padding: 2px 6px; border-radius: 6px;
+  }
+  .task-item .del:hover { color: var(--danger); }
+  .empty { color: var(--text-dim); font-size: 0.85rem; text-align: center; padding: 8px 0; }
+  footer { text-align: center; font-size: 0.72rem; color: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header>
+    <h1>🍅 Pomodoro+</h1>
+    <p>Concentre-toi, une session à la fois.</p>
+  </header>
+
+  <div class="modes" id="modes">
+    <button data-mode="focus" class="active">Focus</button>
+    <button data-mode="short">Pause courte</button>
+    <button data-mode="long">Pause longue</button>
+  </div>
+
+  <div class="timer-card" id="timerCard">
+    <div class="ring">
+      <svg viewBox="0 0 260 260">
+        <circle class="track" cx="130" cy="130" r="110"></circle>
+        <circle class="progress" id="progressRing" cx="130" cy="130" r="110"></circle>
+      </svg>
+      <div class="time">
+        <div class="digits" id="digits">25:00</div>
+        <div class="label" id="modeLabel">Focus</div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn-primary" id="startBtn">Démarrer</button>
+      <button class="btn-secondary" id="resetBtn">Réinitialiser</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="statToday">0</div><div class="l">Aujourd'hui</div></div>
+    <div class="stat"><div class="n" id="statStreak">0</div><div class="l">Série</div></div>
+    <div class="stat"><div class="n" id="statTotal">0</div><div class="l">Total</div></div>
+  </div>
+
+  <div class="tasks">
+    <h2>Tâches</h2>
+    <div class="task-input">
+      <input type="text" id="taskInput" placeholder="Sur quoi tu travailles ?" maxlength="120">
+      <button id="addTaskBtn">Ajouter</button>
+    </div>
+    <ul class="task-list" id="taskList"></ul>
+  </div>
+
+  <footer>Tes données restent dans ce navigateur (localStorage).</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const DURATIONS = { focus: 25 * 60, short: 5 * 60, long: 15 * 60 };
+  const COLORS = { focus: "var(--focus)", short: "var(--short)", long: "var(--long)" };
+  const LABELS = { focus: "Focus", short: "Pause courte", long: "Pause longue" };
+  const RADIUS = 110;
+  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+  const state = load("pomodoroPlusState", {
+    mode: "focus",
+    remaining: DURATIONS.focus,
+    running: false,
+    endAt: null,
+    tasks: [],
+    activeTaskId: null,
+    stats: { total: 0, dates: {} }
+  });
+
+  const els = {
+    modes: document.getElementById("modes"),
+    digits: document.getElementById("digits"),
+    modeLabel: document.getElementById("modeLabel"),
+    ring: document.getElementById("progressRing"),
+    startBtn: document.getElementById("startBtn"),
+    resetBtn: document.getElementById("resetBtn"),
+    statToday: document.getElementById("statToday"),
+    statStreak: document.getElementById("statStreak"),
+    statTotal: document.getElementById("statTotal"),
+    taskInput: document.getElementById("taskInput"),
+    addTaskBtn: document.getElementById("addTaskBtn"),
+    taskList: document.getElementById("taskList"),
+    timerCard: document.getElementById("timerCard"),
+  };
+
+  els.ring.style.strokeDasharray = CIRCUMFERENCE;
+
+  let tickHandle = null;
+  let audioCtx = null;
+
+  function load(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return fallback;
+      const parsed = JSON.parse(raw);
+      return Object.assign({}, fallback, parsed);
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function save() {
+    try {
+      localStorage.setItem("pomodoroPlusState", JSON.stringify(state));
+    } catch (e) { /* storage unavailable (private mode, data: URL, etc.) */ }
+  }
+
+  function todayKey() {
+    const d = new Date();
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+  }
+
+  function fmt(sec) {
+    const m = Math.floor(sec / 60).toString().padStart(2, "0");
+    const s = Math.floor(sec % 60).toString().padStart(2, "0");
+    return m + ":" + s;
+  }
+
+  function setMode(mode, resetRemaining) {
+    state.mode = mode;
+    if (resetRemaining !== false) {
+      state.remaining = DURATIONS[mode];
+    }
+    state.running = false;
+    state.endAt = null;
+    stopTick();
+    render();
+    save();
+  }
+
+  function render() {
+    els.timerCard.style.setProperty("--mode-color", COLORS[state.mode]);
+    els.modes.style.setProperty("--mode-color", COLORS[state.mode]);
+    document.querySelectorAll(".modes button").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.mode === state.mode);
+      btn.style.setProperty("--mode-color", COLORS[btn.dataset.mode]);
+    });
+    els.digits.textContent = fmt(state.remaining);
+    els.modeLabel.textContent = LABELS[state.mode];
+    const total = DURATIONS[state.mode];
+    const frac = 1 - state.remaining / total;
+    els.ring.style.stroke = "";
+    els.ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - frac);
+    els.startBtn.textContent = state.running ? "Pause" : (state.remaining < DURATIONS[state.mode] ? "Reprendre" : "Démarrer");
+    document.title = (state.running ? fmt(state.remaining) + " · " : "") + "Pomodoro+";
+    renderStats();
+    renderTasks();
+  }
+
+  function renderStats() {
+    const today = state.stats.dates[todayKey()] || 0;
+    els.statToday.textContent = today;
+    els.statTotal.textContent = state.stats.total;
+    els.statStreak.textContent = computeStreak();
+  }
+
+  function computeStreak() {
+    let streak = 0;
+    const d = new Date();
+    for (;;) {
+      const key = d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+      if (state.stats.dates[key] > 0) {
+        streak++;
+        d.setDate(d.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  function renderTasks() {
+    els.taskList.innerHTML = "";
+    if (state.tasks.length === 0) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = "Aucune tâche pour l'instant. Ajoute la première.";
+      els.taskList.appendChild(li);
+      return;
+    }
+    state.tasks.forEach((task) => {
+      const li = document.createElement("li");
+      li.className = "task-item" + (task.done ? " done" : "") + (task.id === state.activeTaskId ? " active-task" : "");
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = task.done;
+      cb.addEventListener("change", () => {
+        task.done = cb.checked;
+        save();
+        renderTasks();
+      });
+
+      const txt = document.createElement("span");
+      txt.className = "txt";
+      txt.textContent = task.text;
+      txt.title = "Cliquer pour définir comme tâche active";
+      txt.addEventListener("click", () => {
+        state.activeTaskId = task.id === state.activeTaskId ? null : task.id;
+        save();
+        renderTasks();
+      });
+
+      const count = document.createElement("span");
+      count.className = "pomo-count";
+      count.textContent = task.pomodoros > 0 ? "🍅×" + task.pomodoros : "";
+
+      const del = document.createElement("button");
+      del.className = "del";
+      del.textContent = "✕";
+      del.addEventListener("click", () => {
+        state.tasks = state.tasks.filter((t) => t.id !== task.id);
+        if (state.activeTaskId === task.id) state.activeTaskId = null;
+        save();
+        renderTasks();
+      });
+
+      li.appendChild(cb);
+      li.appendChild(txt);
+      li.appendChild(count);
+      li.appendChild(del);
+      els.taskList.appendChild(li);
+    });
+  }
+
+  function addTask() {
+    const text = els.taskInput.value.trim();
+    if (!text) return;
+    state.tasks.push({ id: Date.now().toString(36), text, done: false, pomodoros: 0 });
+    els.taskInput.value = "";
+    save();
+    renderTasks();
+  }
+
+  function startTick() {
+    stopTick();
+    state.endAt = Date.now() + state.remaining * 1000;
+    tickHandle = setInterval(tick, 250);
+  }
+
+  function stopTick() {
+    if (tickHandle) {
+      clearInterval(tickHandle);
+      tickHandle = null;
+    }
+  }
+
+  function tick() {
+    if (!state.running || !state.endAt) return;
+    const remaining = Math.max(0, Math.round((state.endAt - Date.now()) / 1000));
+    state.remaining = remaining;
+    if (remaining <= 0) {
+      completeSession();
+      return;
+    }
+    render();
+  }
+
+  function completeSession() {
+    stopTick();
+    state.running = false;
+    playChime();
+    notify();
+
+    if (state.mode === "focus") {
+      const key = todayKey();
+      state.stats.dates[key] = (state.stats.dates[key] || 0) + 1;
+      state.stats.total += 1;
+      const active = state.tasks.find((t) => t.id === state.activeTaskId);
+      if (active) active.pomodoros += 1;
+
+      const doneToday = state.stats.dates[key];
+      const nextMode = doneToday % 4 === 0 ? "long" : "short";
+      state.mode = nextMode;
+      state.remaining = DURATIONS[nextMode];
+    } else {
+      state.mode = "focus";
+      state.remaining = DURATIONS.focus;
+    }
+    state.endAt = null;
+    save();
+    render();
+  }
+
+  function toggleStart() {
+    state.running = !state.running;
+    if (state.running) {
+      startTick();
+    } else {
+      if (state.endAt) {
+        state.remaining = Math.max(0, Math.round((state.endAt - Date.now()) / 1000));
+      }
+      stopTick();
+    }
+    save();
+    render();
+  }
+
+  function resetTimer() {
+    state.running = false;
+    state.remaining = DURATIONS[state.mode];
+    state.endAt = null;
+    stopTick();
+    save();
+    render();
+  }
+
+  function playChime() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioCtx.currentTime;
+      [523.25, 659.25, 783.99].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, now + i * 0.15);
+        gain.gain.linearRampToValueAtTime(0.2, now + i * 0.15 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.4);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now + i * 0.15);
+        osc.stop(now + i * 0.15 + 0.4);
+      });
+    } catch (e) { /* audio unavailable */ }
+  }
+
+  function notify() {
+    if (!("Notification" in window)) return;
+    const msg = state.mode === "focus" ? "Session terminée — passe à la pause !" : "Pause terminée — au travail !";
+    if (Notification.permission === "granted") {
+      new Notification("Pomodoro+", { body: msg });
+    }
+  }
+
+  if ("Notification" in window && Notification.permission === "default") {
+    els.startBtn.addEventListener("click", () => Notification.requestPermission(), { once: true });
+  }
+
+  els.modes.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-mode]");
+    if (!btn) return;
+    setMode(btn.dataset.mode);
+  });
+  els.startBtn.addEventListener("click", toggleStart);
+  els.resetBtn.addEventListener("click", resetTimer);
+  els.addTaskBtn.addEventListener("click", addTask);
+  els.taskInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addTask();
+  });
+
+  if (state.running && state.endAt) {
+    const remaining = Math.max(0, Math.round((state.endAt - Date.now()) / 1000));
+    if (remaining <= 0) {
+      state.running = false;
+      state.remaining = 0;
+      completeSession();
+    } else {
+      state.remaining = remaining;
+      startTick();
+    }
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
